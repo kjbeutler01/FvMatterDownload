@@ -54,4 +54,6 @@ filenames that include the document ID for uniqueness.
 - Works with either the US or CA Filevine environment
 - Optional progress bar using `tqdm`
 
+- Preserves the Filevine folder hierarchy under the chosen download directory
+
 All downloaded documents will be placed in the chosen directory.
