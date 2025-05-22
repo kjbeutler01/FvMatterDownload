@@ -149,7 +149,12 @@ def list_documents(
     page = 1
     next_token = None
     while True:
-        params: Dict[str, Any] = {"fields": "id,title,fileName"}
+        # Request folder path information so downloaded files can be organized
+        # into the same structure they have in Filevine. Different API versions
+        # may expose this field under different names, so request both.
+        params: Dict[str, Any] = {
+            "fields": "id,title,fileName,folderPath,path"
+        }
         if next_token:
             params["pageToken"] = next_token
         else:
@@ -202,8 +207,19 @@ def download_document(
     """Download a single document file (latest version) by its ID."""
     doc_id = str(doc.get("id") or doc.get("documentId"))
     filename = doc.get("title") or doc.get("fileName") or ""
+
+    # Determine the folder path from the document metadata if available. The
+    # API may provide the folder hierarchy as a string ("folderPath" or "path")
+    # or as a list of folder names. Normalize to a string separated by '/'.
+    folder_path = doc.get("folderPath") or doc.get("path") or ""
+    if isinstance(folder_path, list):
+        folder_path = "/".join(str(p) for p in folder_path)
+    folder_path = str(folder_path).strip("/")
+    dest_subdir = os.path.join(dest_dir, folder_path) if folder_path else dest_dir
+    os.makedirs(dest_subdir, exist_ok=True)
+
     safe_name = sanitize_filename(filename, doc_id)
-    filepath = os.path.join(dest_dir, safe_name)
+    filepath = os.path.join(dest_subdir, safe_name)
 
     url = f"{base_url}/core/documents/{doc_id}/file"
     with session.get(url, headers=headers, stream=True) as resp:
